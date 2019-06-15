@@ -45,6 +45,7 @@ public class Config {
     public String discordToken = "PUT TOKEN HERE";
     public Irc irc = new Irc();
     public Map<String, Long> links = new HashMap<>();
+    public Map<Long, String> hooks = new HashMap<>();
 
     public Optional<String> getIrcChannelByDiscord(long id) {
         return this.links.entrySet().stream().filter(e -> e.getValue() == id).map(Map.Entry::getKey).findFirst();
@@ -54,10 +55,15 @@ public class Config {
         return this.links.entrySet().stream().filter(e -> e.getKey().equalsIgnoreCase(channel)).mapToLong(Map.Entry::getValue).findFirst();
     }
 
+    public Map<Long, String> getHooks() {
+        return this.hooks;
+    }
+
     // This is just a cute little helper to make yourself a fresh config
     public static void main(String[] args) {
         Config conf = new Config();
         conf.links.put("#channel", 1111111111111111111L);
+        conf.hooks.put(1111111111111111111L, "hook");
         System.out.println(new GsonBuilder().serializeNulls().setPrettyPrinting().create().toJson(conf));
     }
 }
