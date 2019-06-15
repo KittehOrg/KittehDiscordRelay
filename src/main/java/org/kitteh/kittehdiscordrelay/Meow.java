@@ -124,9 +124,6 @@ public class Meow extends Thread {
 
     @SubscribeEvent
     public void discordMessage(MessageReceivedEvent event) {
-        if (event.getAuthor().getName().endsWith("(on IRC)")) {
-            return;
-        }
         if (event.getAuthor().getIdLong() == this.jda.getSelfUser().getIdLong()) {
             return; // It's just me
         }
@@ -142,6 +139,9 @@ public class Meow extends Thread {
         String senderName;
 
         if (event.isWebhookMessage()) {
+            if (event.getAuthor().getName().endsWith("(on IRC)")) {
+                return;
+            }
             senderName = event.getAuthor().getName();
         } else {
             senderName = event.getMember().getEffectiveName();
