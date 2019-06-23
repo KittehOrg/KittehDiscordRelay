@@ -38,7 +38,10 @@ import net.engio.mbassy.listener.Handler;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.element.Channel;
+import org.kitteh.irc.client.library.element.User;
+import org.kitteh.irc.client.library.event.channel.ChannelCtcpEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
+import org.kitteh.irc.client.library.event.helper.ActorMessageEvent;
 import org.kitteh.irc.client.library.util.Cutter;
 import org.kitteh.irc.client.library.util.Format;
 import org.kitteh.pastegg.PasteBuilder;
@@ -53,7 +56,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.OptionalLong;
 
 public class Meow extends Thread {
     private static Format[] COLORS = {
@@ -176,28 +178,38 @@ public class Meow extends Thread {
 
     @Handler
     public void ircMessage(ChannelMessageEvent event) {
+        this.config.getDiscordIdByIrcChannel(event.getChannel().getName()).ifPresent(id -> this.processMessage(event, id, event.getMessage()));
+    }
+
+    @Handler
+    public void ircMeMessage(ChannelCtcpEvent event) {
+        if (event.getCommand().equalsIgnoreCase("ACTION")) {
+            String message = "*" + event.getMessage().substring(7) + "*";
+            this.config.getDiscordIdByIrcChannel(event.getChannel().getName()).ifPresent(id -> this.processMessage(event, id, message));
+        }
+    }
+
+    private void processMessage(ActorMessageEvent<User> event, long id, String message) {
         if (event.getActor().getNick().equalsIgnoreCase(event.getClient().getNick())) {
             return; // It's just me
         }
-        OptionalLong target = this.config.getDiscordIdByIrcChannel(event.getChannel().getName());
+        message = message.replace("@everyone", "at-everyone").replace("@here", "at-here");
 
-        target.ifPresent(id -> {
-            TextChannel channel = jda.getTextChannelById(id);
-            WebhookClient client = this.hooks.get(id);
-            if (client == null) {
-                channel.sendMessage("<" + event.getActor().getNick() + "> " + event.getMessage()).queue();
-                return;
-            }
-            WebhookMessageBuilder builder = new WebhookMessageBuilder()
-                    .setUsername(event.getActor().getNick() + " (on IRC)")
-                    .setContent(event.getMessage());
-            List<Member> mem = new ArrayList<>(channel.getGuild().getMembersByName(event.getActor().getNick(), false));
-            mem.addAll(channel.getGuild().getMembersByEffectiveName(event.getActor().getNick(), false));
-            if (!mem.isEmpty()) {
-                builder.setAvatarUrl(mem.get(0).getUser().getAvatarUrl());
-            }
-            client.send(builder.build());
-        });
+        TextChannel channel = jda.getTextChannelById(id);
+        WebhookClient client = this.hooks.get(id);
+        if (client == null) {
+            channel.sendMessage("<" + event.getActor().getNick() + "> " + message).queue();
+            return;
+        }
+        WebhookMessageBuilder builder = new WebhookMessageBuilder()
+                .setUsername(event.getActor().getNick() + " (on IRC)")
+                .setContent(message);
+        List<Member> mem = new ArrayList<>(channel.getGuild().getMembersByName(event.getActor().getNick(), false));
+        mem.addAll(channel.getGuild().getMembersByEffectiveName(event.getActor().getNick(), false));
+        if (!mem.isEmpty()) {
+            builder.setAvatarUrl(mem.get(0).getUser().getAvatarUrl());
+        }
+        client.send(builder.build());
     }
 
     private List<String> splitify(String guaranteedLengthBits, String target, String message) {
