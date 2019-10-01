@@ -23,17 +23,17 @@
  */
 package org.kitteh.kittehdiscordrelay;
 
+import club.minnced.discord.webhook.WebhookClient;
+import club.minnced.discord.webhook.WebhookClientBuilder;
+import club.minnced.discord.webhook.send.WebhookMessageBuilder;
 import com.google.gson.Gson;
-import net.dv8tion.jda.core.JDA;
-import net.dv8tion.jda.core.JDABuilder;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.TextChannel;
-import net.dv8tion.jda.core.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.core.hooks.AnnotatedEventManager;
-import net.dv8tion.jda.core.hooks.SubscribeEvent;
-import net.dv8tion.jda.webhook.WebhookClient;
-import net.dv8tion.jda.webhook.WebhookClientBuilder;
-import net.dv8tion.jda.webhook.WebhookMessageBuilder;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.hooks.AnnotatedEventManager;
+import net.dv8tion.jda.api.hooks.SubscribeEvent;
 import net.engio.mbassy.listener.Handler;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.kitteh.irc.client.library.Client;
@@ -107,18 +107,21 @@ public class Meow extends Thread {
 
         this.ircClient.getEventManager().registerEventListener(this);
         this.config.links.keySet().forEach(this.ircClient::addChannel);
-        this.ircClient.connect();
+
 
         try {
             this.jda = new JDABuilder(this.config.discordToken)
                     .setEventManager(new AnnotatedEventManager())
-                    .addEventListener(this)
+                    .addEventListeners(this)
                     .build();
         } catch (Exception e) {
             System.out.println("Oh no, JDA fell over");
             e.printStackTrace();
             System.exit(66);
         }
+
+        this.ircClient.connect();
+
         for (Map.Entry<Long, String> e : this.config.getHooks().entrySet()) {
             this.hooks.put(e.getKey(), new WebhookClientBuilder(e.getValue()).build());
         }
@@ -157,7 +160,11 @@ public class Meow extends Thread {
         event.getMessage().getAttachments().forEach(a -> attachments.add(a.getUrl()));
         messages.addAll(attachments);
         if ((messages.size()) < 3) {
-            messages.forEach(m -> this.ircClient.sendMessage(target.get(), prefix + m));
+            messages.forEach(m -> {
+                if (!m.trim().isEmpty()) {
+                    this.ircClient.sendMessage(target.get(), prefix + m);
+                }
+            });
         } else {
             PasteBuilder builder = new PasteBuilder()
                     .name((event.isWebhookMessage() ? "WEB" : "") + senderName + " in #" + event.getChannel().getName() + " on " + event.getGuild().getName())
