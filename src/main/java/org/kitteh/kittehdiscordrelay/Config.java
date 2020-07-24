@@ -1,5 +1,5 @@
 /*
- * * Copyright (C) 2019 Matt Baxter http://kitteh.org
+ * * Copyright (C) 2019-2020 Matt Baxter http://kitteh.org
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -40,6 +40,9 @@ public class Config {
         public String nick = "KittehRelay";
         public String user = "meow";
         public String realName = "Kitteh Discord Relay";
+        public boolean auth = false;
+        public String authName = "Kitteh";
+        public String authPass = "meow";
     }
 
     public String discordToken = "PUT TOKEN HERE";

@@ -56,7 +56,11 @@
         <repository>
             <id>jcenter</id>
             <name>jcenter-bintray</name>
-            <url>http://jcenter.bintray.com</url>
+            <url>https://jcenter.bintray.com</url>
+        </repository>
+        <repository>
+            <id>fuuid-repo</id>
+            <url>https://github.com/factions-site/repo/raw/public</url>
         </repository>
     </repositories>
 
@@ -64,19 +68,19 @@
         <dependency>
             <groupId>org.kitteh.irc</groupId>
             <artifactId>client-lib</artifactId>
-            <version>7.2.0</version>
+            <version>7.3.0</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.kitteh</groupId>
             <artifactId>paste-gg-api</artifactId>
-            <version>0.9.0</version>
+            <version>0.9.1</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>net.dv8tion</groupId>
             <artifactId>JDA</artifactId>
-            <version>4.0.0_50</version>
+            <version>4.2.0_168</version>
             <exclusions>
                 <exclusion>
                     <groupId>club.minnced</groupId>

@@ -1,5 +1,5 @@
 /*
- * * Copyright (C) 2019 Matt Baxter http://kitteh.org
+ * * Copyright (C) 2019-2020 Matt Baxter http://kitteh.org
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -34,6 +34,7 @@ import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.AnnotatedEventManager;
 import net.dv8tion.jda.api.hooks.SubscribeEvent;
+import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.engio.mbassy.listener.Handler;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.kitteh.irc.client.library.Client;
@@ -42,6 +43,8 @@ import org.kitteh.irc.client.library.element.User;
 import org.kitteh.irc.client.library.event.channel.ChannelCtcpEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.kitteh.irc.client.library.event.helper.ActorMessageEvent;
+import org.kitteh.irc.client.library.feature.auth.NickServ;
+import org.kitteh.irc.client.library.feature.auth.SaslPlain;
 import org.kitteh.irc.client.library.util.Cutter;
 import org.kitteh.irc.client.library.util.Format;
 import org.kitteh.pastegg.PasteBuilder;
@@ -93,24 +96,33 @@ public class Meow extends Thread {
             System.exit(66);
         }
 
-        this.ircClient = Client.builder()
+        Client.Builder builder = Client.builder()
                 .nick(this.config.irc.nick)
                 .realName(this.config.irc.realName)
                 .user(this.config.irc.user)
                 .server()
                 .host(this.config.irc.host)
-                .secure(this.config.irc.secure)
-                .port(this.config.irc.port)
-                .password(this.config.irc.password)
-                .then()
-                .build();
+                .port(this.config.irc.port, this.config.irc.secure ? Client.Builder.Server.SecurityType.SECURE : Client.Builder.Server.SecurityType.INSECURE)
+                .then();
 
+        if (this.config.irc.password != null && !this.config.irc.password.isEmpty()) {
+            builder.server().password(this.config.irc.password);
+        }
+
+        this.ircClient = builder.build();
+
+        if (this.config.irc.auth) {
+            this.ircClient.getAuthManager().addProtocol(new SaslPlain(this.ircClient, this.config.irc.authName, this.config.irc.authPass));
+            this.ircClient.getAuthManager().addProtocol(NickServ.builder(this.ircClient).account(this.config.irc.authName).password(this.config.irc.authPass).build());
+        }
         this.ircClient.getEventManager().registerEventListener(this);
         this.config.links.keySet().forEach(this.ircClient::addChannel);
 
 
         try {
-            this.jda = new JDABuilder(this.config.discordToken)
+            this.jda = JDABuilder.create(this.config.discordToken,
+                    GatewayIntent.GUILD_MEMBERS,
+                    GatewayIntent.GUILD_MESSAGES)
                     .setEventManager(new AnnotatedEventManager())
                     .addEventListeners(this)
                     .build();
@@ -175,7 +187,7 @@ public class Meow extends Thread {
                 }
             }
             PasteBuilder.PasteResult result = builder.build();
-            if (result.getPaste().isPresent()) {
+            if (result != null && result.getPaste().isPresent()) {
                 this.ircClient.sendMessage(target.get(), prefix + "https://paste.gg/" + result.getPaste().get().getId());
             } else {
                 this.ircClient.sendMessage(target.get(), color.toString() + sendingName + Format.RESET.toString() + " sent too much, but the paste service is offline");
@@ -200,6 +212,7 @@ public class Meow extends Thread {
         if (event.getActor().getNick().equalsIgnoreCase(event.getClient().getNick())) {
             return; // It's just me
         }
+        message = message.replace("@", "at");
         message = message.replace("@everyone", "at-everyone").replace("@here", "at-here");
 
         TextChannel channel = jda.getTextChannelById(id);
